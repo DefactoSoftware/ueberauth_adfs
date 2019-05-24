@@ -14,7 +14,6 @@ defmodule Ueberauth.Strategy.ADFSTest do
               client_id: "example_client",
               resource_identifier: "example_resource"
 
-
   @env_handler_values adfs_url: "https://example.com",
                       adfs_metadata_url: "https://example.com/metadata.xml",
                       adfs_handler: Ueberauth.Strategy.ADFSTestHandler,
@@ -185,7 +184,7 @@ defmodule Ueberauth.Strategy.ADFSTest do
         [error] = ADFS.handle_callback!(%Plug.Conn{params: %{"code" => "1234"}})
 
         assert error == %Ueberauth.Failure.Error{
-                 message: "Service Unavailable",
+                 message: "Service Unavailable - Contact the identity provider",
                  message_key: "Authentication Error"
                }
       end

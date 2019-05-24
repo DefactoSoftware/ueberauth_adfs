@@ -107,6 +107,11 @@ defmodule Ueberauth.Strategy.ADFS do
 
       {:error, %OAuth2.Response{body: %{"error_description" => reason}}} ->
         set_errors!(conn, [error("Authentication Error", reason)])
+
+      {:error, %OAuth2.Response{body: _, status_code: 503}} ->
+        set_errors!(conn, [
+          error("Authentication Error", "Service Unavailable - Contact the identity provider")
+        ])
     end
   end
 
