@@ -107,6 +107,11 @@ defmodule Ueberauth.Strategy.ADFS do
 
       {:error, %OAuth2.Response{body: %{"error_description" => reason}}} ->
         set_errors!(conn, [error("Authentication Error", reason)])
+
+      {:error, %OAuth2.Response{body: _, status_code: 503}} ->
+        set_errors!(conn, [
+          error("Authentication Error", "Service Unavailable - Contact the identity provider")
+        ])
     end
   end
 
@@ -229,10 +234,10 @@ defmodule Ueberauth.Strategy.ADFS do
   end
 
   defp env_present?(env) do
-    if Keyword.has_key?(env, :adfs_url)
-    && Keyword.has_key?(env, :adfs_metadata_url)
-    && Keyword.has_key?(env, :client_id)
-    && Keyword.has_key?(env, :resource_identifier) do
+    if env && Keyword.has_key?(env, :adfs_url) &&
+         Keyword.has_key?(env, :adfs_metadata_url) &&
+         Keyword.has_key?(env, :client_id) &&
+         Keyword.has_key?(env, :resource_identifier) do
       env
       |> Keyword.take([:adfs_url, :adfs_metadata_url, :client_id, :resource_identifier])
       |> Keyword.values()

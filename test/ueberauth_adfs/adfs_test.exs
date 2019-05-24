@@ -14,7 +14,6 @@ defmodule Ueberauth.Strategy.ADFSTest do
               client_id: "example_client",
               resource_identifier: "example_resource"
 
-
   @env_handler_values adfs_url: "https://example.com",
                       adfs_metadata_url: "https://example.com/metadata.xml",
                       adfs_handler: Ueberauth.Strategy.ADFSTestHandler,
@@ -160,6 +159,32 @@ defmodule Ueberauth.Strategy.ADFSTest do
 
         assert error == %Ueberauth.Failure.Error{
                  message: "oauth_error",
+                 message_key: "Authentication Error"
+               }
+      end
+    end
+
+    test "Handle callback from ADFS provider with OAuth2 error 503 and no body" do
+      with_mock ADFS.OAuth, [:passthrough],
+        get_token: fn _, _ ->
+          {:error,
+           %OAuth2.Response{
+             body: "",
+             headers: [
+               {"content-length", "0"},
+               {"content-type", "text/html; charset=utf-8"},
+               {"date", "Fri, 24 May 2019 10:15:00 GMT"},
+               {"set-cookie",
+                "NSC_mcwt_tut.vndh.om-fyu=ffffffff922fe69445525d5f4f58455e445a4a42378b;Version=1;path=/;secure;httponly"},
+               {"strict-transport-security", "max-age=157680000"}
+             ],
+             status_code: 503
+           }}
+        end do
+        [error] = ADFS.handle_callback!(%Plug.Conn{params: %{"code" => "1234"}})
+
+        assert error == %Ueberauth.Failure.Error{
+                 message: "Service Unavailable - Contact the identity provider",
                  message_key: "Authentication Error"
                }
       end
