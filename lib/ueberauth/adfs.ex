@@ -155,14 +155,11 @@ defmodule Ueberauth.Strategy.ADFS do
   end
 
   defp fetch_user(conn, %{token: %{access_token: access_token}}) do
-    url = config(:adfs_metadata_url)
-
     adfs_handler = config(:adfs_handler) || Ueberauth.Strategy.ADFS.DefaultHandler
 
     conn = put_private(conn, :adfs_handler, adfs_handler)
 
-    with {:ok, %HTTPoison.Response{body: metadata}} <-
-           HTTPoison.get(url, [], ssl: [versions: [:"tlsv1.2"]]),
+    with {:ok, metadata} <- get_metadata(),
          true <- String.starts_with?(metadata, "<EntityDescriptor"),
          {:ok, certificate} <- cert_from_metadata(metadata) do
       key =
@@ -187,6 +184,19 @@ defmodule Ueberauth.Strategy.ADFS do
       {:error, %HTTPoison.Error{}} -> set_errors!(conn, [error("metadata_url", "not_found")])
       {:error, :cert_not_found} -> set_errors!(conn, [error("certificate", "not_found")])
       false -> set_errors!(conn, [error("metadata", "malformed")])
+    end
+  end
+
+  defp get_metadata do
+    cond do
+      url = config(:adfs_metadata_url) ->
+        with {:ok, %HTTPoison.Response{body: metadata}} <-
+               HTTPoison.get(url, [], ssl: [versions: [:"tlsv1.2"]]) do
+          {:ok, metadata}
+        end
+
+      path = config(:adfs_metadata_path) ->
+        File.read(path)
     end
   end
 
@@ -229,12 +239,12 @@ defmodule Ueberauth.Strategy.ADFS do
   end
 
   defp env_present?(env) do
-    if Keyword.has_key?(env, :adfs_url)
-    && Keyword.has_key?(env, :adfs_metadata_url)
-    && Keyword.has_key?(env, :client_id)
-    && Keyword.has_key?(env, :resource_identifier) do
+    if Keyword.has_key?(env, :adfs_url) &&
+         (Keyword.has_key?(env, :adfs_metadata_url) || Keyword.has_key?(env, :adfs_metadata_path)) &&
+         Keyword.has_key?(env, :client_id) &&
+         Keyword.has_key?(env, :resource_identifier) do
       env
-      |> Keyword.take([:adfs_url, :adfs_metadata_url, :client_id, :resource_identifier])
+      |> Keyword.take([:adfs_url, :client_id, :resource_identifier])
       |> Keyword.values()
       |> Enum.all?(&(byte_size(&1 || <<>>) > 0))
     else
